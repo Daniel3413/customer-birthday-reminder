@@ -1,0 +1,983 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Customer Birthday Reminder</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#C8254F">
+<meta name="description" content="Never miss a customer birthday: reminders 3 days ahead, wishes in English, Malay and Chinese with a card image.">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Birthdays">
+
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Caveat:wght@600&family=DM+Serif+Display&family=Figtree:wght@400;500;600;700&family=Noto+Sans+SC:wght@500&family=Noto+Serif+SC:wght@700&family=Noto+Sans+TC:wght@500&family=Noto+Serif+TC:wght@700&display=swap">
+<style>
+/* Layout: one narrow column (max 760px) that reads like a phone app; a tear-off calendar leaf marks every birthday. */
+:root {
+  --bg: #F5F6FA; --surface: #FFFFFF; --ink: #141B2D; --muted: #5B6478; --line: #E0E4ED;
+  --accent: #C8254F; --accent-ink: #FFFFFF; --accent-soft: #FBE6EC;
+  --ok: #1D7F54; --ok-soft: #E2F3EA; --warn: #9A5B00; --warn-soft: #FFF1D9; --bad: #B42318; --bad-soft: #FDE8E6;
+  --shadow: 0 1px 2px rgba(20,27,45,.06), 0 6px 20px rgba(20,27,45,.06);
+  --f-display: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
+  --f-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0E1220; --surface: #171C2C; --ink: #ECEFF6; --muted: #9AA3B8; --line: #2A3146;
+  --accent: #F0577D; --accent-ink: #1A0710; --accent-soft: #3A1A25;
+  --ok: #4CC38A; --ok-soft: #12301F; --warn: #F2B04C; --warn-soft: #33260F; --bad: #F97066; --bad-soft: #3A1714;
+  --shadow: 0 1px 2px rgba(0,0,0,.3); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0E1220; --surface: #171C2C; --ink: #ECEFF6; --muted: #9AA3B8; --line: #2A3146;
+  --accent: #F0577D; --accent-ink: #1A0710; --accent-soft: #3A1A25;
+  --ok: #4CC38A; --ok-soft: #12301F; --warn: #F2B04C; --warn-soft: #33260F; --bad: #F97066; --bad-soft: #3A1714;
+  --shadow: 0 1px 2px rgba(0,0,0,.3); color-scheme: dark; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+img { max-width: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 760px; margin: 0 auto; padding-block: 20px 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 18px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: 26px; font-weight: 800; letter-spacing: -.01em; }
+h2 { font-size: 19px; font-weight: 700; }
+h3 { font-size: 16px; font-weight: 600; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+header.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; box-shadow: var(--shadow); overflow-x: auto; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.tabs button { flex: 1 0 auto; border: 0; background: transparent; color: var(--muted); font: 600 14px var(--f-body); padding: 9px 12px; border-radius: 9px; cursor: pointer; white-space: nowrap; }
+@media (max-width: 420px) { .tabs button { padding: 9px 7px; font-size: 13px; } }
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+section.view { display: flex; flex-direction: column; gap: 14px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.banner { border-radius: 12px; padding: 12px 14px; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-size: 14px; }
+.banner.info { background: var(--accent-soft); }
+.banner.warn { background: var(--warn-soft); color: var(--ink); }
+.banner strong { font-weight: 700; }
+button, .btn { font: 600 14px var(--f-body); border-radius: 10px; padding: 10px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; min-height: 42px; }
+button:hover, .btn:hover { border-color: var(--muted); }
+button:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button.primary, .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.danger { color: var(--bad); border-color: var(--bad); background: transparent; }
+button.danger.solid { background: var(--bad); color: #fff; }
+button.link { border: 0; background: none; padding: 0; min-height: 0; color: var(--accent); text-decoration: underline; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.grow { flex: 1 1 auto; min-width: 0; }
+input[type=text], input[type=search], input[type=email], input[type=tel], input[type=number], select, textarea { font: 15px var(--f-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; width: 100%; min-height: 42px; }
+textarea { min-height: 200px; resize: vertical; line-height: 1.5; }
+label.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.list { display: flex; flex-direction: column; gap: 8px; }
+.item { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; cursor: pointer; text-align: left; width: 100%; font: inherit; color: inherit; min-height: 0; }
+.item:hover { border-color: var(--accent); }
+.item .who { min-width: 0; }
+.item .who b { display: block; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+.item .who span { display: block; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.leaf { width: 52px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); text-align: center; background: var(--bg); font-variant-numeric: tabular-nums; }
+.leaf .m { background: var(--accent); color: var(--accent-ink); font-size: 11px; font-weight: 700; letter-spacing: .08em; padding: 2px 0; }
+.leaf .d { font: 800 22px var(--f-display); padding: 2px 0 1px; }
+.leaf .w { font-size: 10px; color: var(--muted); padding-bottom: 3px; text-transform: uppercase; letter-spacing: .06em; }
+.pill { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.pill.today { background: var(--accent); color: var(--accent-ink); }
+.pill.soon { background: var(--accent-soft); color: var(--accent); }
+.pill.later { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+.pill.sent { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.mile { background: var(--ink); color: var(--bg); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.empty { text-align: center; padding: 22px 10px; color: var(--muted); border: 1px dashed var(--line); border-radius: 14px; }
+.drop { border: 2px dashed var(--line); border-radius: 14px; padding: 22px 16px; text-align: center; display: flex; flex-direction: column; gap: 8px; align-items: center; cursor: pointer; }
+.drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; flex-wrap: wrap; }
+.seg button { border: 0; border-radius: 0; min-height: 38px; padding: 8px 12px; background: var(--surface); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat div { background: var(--bg); border-radius: 10px; padding: 10px; text-align: center; }
+.stat b { display: block; font: 800 24px var(--f-display); font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+table.map { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.map td { padding: 6px 4px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.map td:first-child { width: 42%; font-weight: 600; }
+.scrollx { overflow-x: auto; }
+/* modal */
+.backdrop { position: fixed; inset: 0; background: rgba(8,10,20,.55); z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: var(--surface); color: var(--ink); width: 100%; max-width: 720px; max-height: 92vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 18px; padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; }
+@media (min-width: 760px) { .backdrop { align-items: center; } .sheet { border-radius: 18px; max-height: 88vh; } }
+.sheet-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.x { min-height: 36px; width: 36px; padding: 0; border-radius: 50%; font-size: 20px; line-height: 1; flex: none; }
+.composer { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 640px) { .composer { grid-template-columns: minmax(0, 1fr); } }
+.cardimg { width: 100%; max-width: 100%; aspect-ratio: 4 / 5; border-radius: 12px; background: var(--bg); display: block; object-fit: cover; border: 1px solid var(--line); }
+.contact { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; background: var(--bg); border-radius: 10px; padding: 8px 10px; }
+.contact code { font: 600 14px var(--f-body); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; user-select: all; }
+.styles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.styles button { flex-direction: column; padding: 6px; gap: 4px; font-size: 12px; }
+.styles button[aria-pressed="true"] { border: 2px solid var(--accent); }
+.styles img { width: 100%; aspect-ratio: 4/5; border-radius: 6px; object-fit: cover; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; z-index: 99; font-weight: 600; font-size: 14px; max-width: calc(100% - 32px); box-shadow: var(--shadow); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 480px) { .grid2 { grid-template-columns: 1fr; } }
+.issue-list { margin: 0; padding-left: 18px; font-size: 14px; }
+details summary { cursor: pointer; font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) { .item, button { transition: border-color .15s, background .15s; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow" id="todayLabel"></div>
+      <h1>Customer Birthday Reminder</h1>
+    </div>
+    <span class="pill later" title="Your customer list never leaves this device">Stored on this device only</span>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="tab-upcoming" data-view="upcoming" aria-selected="true">Upcoming</button>
+    <button role="tab" id="tab-month" data-view="month" aria-selected="false">Monthly list</button>
+    <button role="tab" id="tab-customers" data-view="customers" aria-selected="false">Customers</button>
+    <button role="tab" id="tab-settings" data-view="settings" aria-selected="false">Settings</button>
+  </nav>
+
+  <div id="exampleBanner" class="banner info" hidden>
+    <span><strong>Example customers.</strong> These are made-up names. Import your own list to start.</span>
+    <button class="primary" id="bannerImport">Import my list</button>
+  </div>
+
+  <section class="view" id="view-upcoming"></section>
+  <section class="view" id="view-month" hidden></section>
+  <section class="view" id="view-customers" hidden></section>
+  <section class="view" id="view-settings" hidden></section>
+</div>
+<input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.pdf,.png,.jpg,.jpeg,.webp" hidden>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+"use strict";
+/* ---------- constants ---------- */
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MON3 = MONTHS.map(m => m.slice(0,3).toUpperCase());
+const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MON_LOOKUP = {jan:1,january:1,januari:1,feb:2,february:2,februari:2,mar:3,march:3,mac:3,apr:4,april:4,may:5,mei:5,jun:6,june:6,jul:7,july:7,julai:7,aug:8,august:8,ogos:8,ogo:8,sep:9,sept:9,september:9,oct:10,october:10,okt:10,oktober:10,nov:11,november:11,dec:12,december:12,dis:12,disember:12};
+const LANGS = { en: "English", ms: "Bahasa Melayu", zh: "中文" };
+const FIELDS = [
+  { key: "name", label: "Customer name", required: true, syn: ["customer name","name","client name","nama","full name","customer","client","nama pelanggan","nama penuh"] },
+  { key: "company", label: "Company", syn: ["company","company name","syarikat","nama syarikat","organisation","organization","employer","business"] },
+  { key: "birthday", label: "Birthday", required: true, syn: ["birthday","date of birth","dob","birth date","birthdate","tarikh lahir","d o b","bday","hari jadi","birth day"] },
+  { key: "phone", label: "Phone", syn: ["phone","mobile","phone number","contact","contact no","contact number","hp","no hp","tel","telephone","handphone","whatsapp","no telefon","mobile no","mobile number","no tel"] },
+  { key: "email", label: "Email", syn: ["email","e mail","email address","emel","alamat emel"] },
+  { key: "am", label: "Account manager", syn: ["account manager","am","manager","agent","rm","relationship manager","advisor","adviser","consultant","servicing agent","pegawai","account officer","agent name"] },
+  { key: "lang", label: "Language (optional)", syn: ["language","lang","bahasa","preferred language"] },
+  { key: "preferred", label: "Preferred name (optional)", syn: ["preferred name","nickname","salutation","call name","nama panggilan"] },
+];
+const DEFAULT_TEMPLATES = {
+  en: { subject: "Happy Birthday, {name}!", body: "Dear {name},\n\nHappy Birthday! 🎂\n\nWishing you good health, happiness and a wonderful year ahead. Thank you for your continued trust in us - it is a privilege to be part of your journey.\n\nWarm regards,\n{am}" },
+  ms: { subject: "Selamat Hari Jadi, {name}!", body: "Yang dihormati {name},\n\nSelamat Hari Jadi! 🎂\n\nSemoga anda sentiasa dikurniakan kesihatan yang baik, kebahagiaan dan kejayaan pada tahun yang mendatang. Terima kasih atas kepercayaan anda yang berterusan - kami amat menghargai hubungan ini.\n\nSalam hormat,\n{am}" },
+  zh: { subject: "{name}，生日快乐！", body: "亲爱的{name}：\n\n祝您生日快乐！🎂\n\n愿您身体健康、幸福美满，新的一岁万事顺意。感谢您一直以来的信任与支持，能陪伴您走过每一段旅程，是我们的荣幸。\n\n{am} 敬上" },
+  zht: { subject: "{name}，生日快樂！", body: "親愛的{name}：\n\n祝您生日快樂！🎂\n\n願您身體健康、幸福美滿，新的一歲萬事順意。感謝您一直以來的信任與支持，能陪伴您走過每一段旅程，是我們的榮幸。\n\n{am} 敬上" },
+};
+const CARD_TEXT = {
+  en: { head: "Happy Birthday", line: "Wishing you a year of good health, happiness and success.", sign: "With warm wishes" },
+  ms: { head: "Selamat Hari Jadi", line: "Semoga sentiasa sihat, bahagia dan dirahmati sepanjang tahun.", sign: "Ikhlas daripada" },
+  zh: { head: "生日快乐", line: "身体健康 · 万事如意 · 岁岁平安", sign: "敬贺" },
+  zht: { head: "生日快樂", line: "身體健康 · 萬事如意 · 歲歲平安", sign: "敬賀" },
+};
+const STYLES = { hibiscus: "Hibiscus", confetti: "Confetti", songket: "Songket" };
+const STORE_KEY = "cbr.v1";
+
+/* ---------- state ---------- */
+let S = defaultState();
+function defaultState() {
+  return {
+    customers: [], skipped: [], sent: {}, isExample: true,
+    settings: { defaultLang: "en", zhScript: "zh", style: "hibiscus", windowDays: 3, senderLine: "", fallbackSender: "", templates: JSON.parse(JSON.stringify(DEFAULT_TEMPLATES)), pdfLangs: { en: true, ms: true, zh: true } },
+  };
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) { const d = JSON.parse(raw); S = Object.assign(defaultState(), d); S.settings = Object.assign(defaultState().settings, d.settings || {}); return true; }
+  } catch (e) {}
+  return false;
+}
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} }
+
+/* ---------- capabilities ---------- */
+const capDownloads = window.claude ? window.claude.use("downloads").catch(() => null) : Promise.resolve(null);
+const capSample = window.claude ? window.claude.use("sample").catch(() => null) : Promise.resolve(null);
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const clean = v => String(v ?? "").replace(/\s+/g, " ").trim();
+function today() { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+const leap = y => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+const dim = (m, y) => [31, leap(y) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+const daysBetween = (a, b) => Math.round((b - a) / 864e5);
+function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+function rng(seed) { let s = parseInt(seed, 36) || 1; return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return ((s >>> 0) % 10000) / 10000; }; }
+function fmtDate(dt, withYear = true) { return `${DOW[dt.getDay()]}, ${dt.getDate()} ${MONTHS[dt.getMonth()].slice(0,3)}${withYear ? " " + dt.getFullYear() : ""}`; }
+function fmtDob(dob) { if (!dob) return "-"; return `${dob.d} ${MONTHS[dob.m - 1].slice(0,3)}${dob.y ? " " + dob.y : ""}`; }
+function fmtPhone(p) { if (!p) return ""; if (p.startsWith("60")) { const r = p.slice(2); return "+60 " + (r.length > 8 ? r.slice(0, 2) + "-" + r.slice(2, 5) + " " + r.slice(5) : r.slice(0, 1) + "-" + r.slice(1, 5) + " " + r.slice(5)); } return "+" + p; }
+let toastTimer;
+function toast(msg) { let t = $(".toast"); if (!t) { t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); } t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 2800); }
+
+/* ---------- birthday parsing ---------- */
+function fixY(s) { const n = +s; if (s.length === 4) return n; const cy = new Date().getFullYear() % 100; return n <= cy ? 2000 + n : 1900 + n; }
+function mk(d, m, y, extra = {}) {
+  if (!(m >= 1 && m <= 12) || !(d >= 1 && d <= dim(m, y || 2000))) return { error: "Not a real date" };
+  const cy = new Date().getFullYear();
+  if (y && (y < 1900 || y > cy)) y = null;
+  return Object.assign({ d, m, y: y || null }, extra);
+}
+function parseDOB(v, fmt) {
+  if (v == null || clean(v) === "") return { error: "Birthday missing" };
+  if (typeof v === "number") {
+    if (v > 0 && v < 80000 && window.XLSX) { const p = XLSX.SSF.parse_date_code(v); if (p) return mk(p.d, p.m, p.y); }
+    v = String(v);
+  }
+  if (v instanceof Date) return mk(v.getDate(), v.getMonth() + 1, v.getFullYear());
+  const raw = clean(v);
+  let s = raw.toLowerCase().replace(/[ t]\d{1,2}:\d{2}(:\d{2})?.*$/, "").trim();
+  let m;
+  if ((m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/))) return mk(+m[3], +m[2], +m[1], { order: "YMD" });
+  if ((m = s.match(/^(\d{1,2})[-\/. ](\d{1,2})(?:[-\/. ](\d{2}|\d{4}))?$/))) {
+    const a = +m[1], b = +m[2], y = m[3] ? fixY(m[3]) : null;
+    if (a > 12 && b <= 12) return mk(a, b, y, { order: "DMY" });
+    if (b > 12 && a <= 12) return mk(b, a, y, { order: "MDY" });
+    if (a <= 12 && b <= 12) return fmt === "MDY" ? mk(b, a, y, { ambiguous: a !== b }) : mk(a, b, y, { ambiguous: a !== b });
+    return { error: `Not a real date ("${raw}")` };
+  }
+  if ((m = s.match(/^(\d{1,2})(?:st|nd|rd|th)?[ \-\/,.]*([a-z]+)\.?[ \-\/,.]*(\d{4}|\d{2})?$/))) { const mo = MON_LOOKUP[m[2]]; if (mo) return mk(+m[1], mo, m[3] ? fixY(m[3]) : null); }
+  if ((m = s.match(/^([a-z]+)\.?[ \-\/,.]*(\d{1,2})(?:st|nd|rd|th)?[ ,\-\/.]*(\d{4})?$/))) { const mo = MON_LOOKUP[m[1]]; if (mo) return mk(+m[2], mo, m[3] ? +m[3] : null); }
+  return { error: `Can't read birthday "${raw}"` };
+}
+
+/* ---------- phone / email / language ---------- */
+function normPhone(v) {
+  const raw = clean(v);
+  if (!raw) return { phone: "", note: null };
+  const parts = raw.split(/[\/,;]| or |\n/i).map(x => x.trim()).filter(Boolean);
+  let first = parts[0], note = parts.length > 1 ? "More than one number; using the first" : null;
+  let digits = first.replace(/[^\d+]/g, "");
+  if (digits.startsWith("+")) digits = digits.slice(1);
+  else if (digits.startsWith("00")) digits = digits.slice(2);
+  else if (digits.startsWith("60")) {}
+  else if (digits.startsWith("0")) digits = "60" + digits.slice(1);
+  else if (/^1\d{8,9}$/.test(digits)) { digits = "60" + digits; note = "Leading 0 was missing (common in Excel). Please check"; }
+  else return { phone: "", note: `Can't read phone "${raw}"` };
+  digits = digits.replace(/\D/g, "");
+  if (digits.startsWith("60") && !/^60\d{8,10}$/.test(digits)) return { phone: "", note: `Phone looks incomplete ("${raw}")` };
+  if (!/^\d{8,15}$/.test(digits)) return { phone: "", note: `Can't read phone "${raw}"` };
+  return { phone: digits, note };
+}
+function normEmail(v) { const e = clean(v).toLowerCase().replace(/^mailto:/, ""); if (!e) return { email: "", note: null }; return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e) ? { email: e, note: null } : { email: "", note: `Email doesn't look right ("${clean(v)}")` }; }
+function normLang(v) { const s = clean(v).toLowerCase(); if (!s) return ""; if (/^(ms|bm|malay|melayu|bahasa melayu|bahasa)/.test(s)) return "ms"; if (/^(zh|cn|chinese|mandarin|中|华|華|cantonese)/.test(s)) return "zh"; if (/^(en|eng|english|bi)/.test(s)) return "en"; return ""; }
+
+/* ---------- customers ---------- */
+function custId(name, dob, phone) { return "c" + hash(name.toLowerCase() + "|" + (dob ? dob.d + "-" + dob.m : "") + "|" + (phone || "")); }
+function validate(c) {
+  c.problems = []; c.warnings = [];
+  if (!c.dob) c.problems.push(c.dobError || "Birthday missing");
+  if (c.phoneNote) c.warnings.push(c.phoneNote);
+  if (c.emailNote) c.warnings.push(c.emailNote);
+  if (!c.phone && !c.email) c.warnings.push("No phone or email to send to");
+  if (!c.am) c.warnings.push("No account manager - message will be signed with the default sender");
+  if (c.dob && c.dob.d === 29 && c.dob.m === 2) c.warnings.push("Born 29 Feb - reminded on 28 Feb in non-leap years");
+  return c;
+}
+function duplicateIds() {
+  const seen = {}, dup = new Set();
+  for (const c of S.customers) { const k = c.name.toLowerCase() + "|" + (c.dob ? c.dob.d + "-" + c.dob.m : "x"); if (seen[k]) { dup.add(c.id); dup.add(seen[k]); } else seen[k] = c.id; }
+  return dup;
+}
+function warningsOf(c, dups) { const w = c.warnings.slice(); if (dups && dups.has(c.id)) w.push("Possible duplicate (same name and birthday)"); return w; }
+function occ(dob, y) { let d = dob.d; if (dob.m === 2 && d === 29 && !leap(y)) d = 28; return new Date(y, dob.m - 1, d); }
+function nextBday(c, from) { for (let i = 0; i < 2; i++) { const dt = occ(c.dob, from.getFullYear() + i); if (dt >= from) return dt; } }
+function sentKey(c, dt) { return c.id + "@" + dt.getFullYear(); }
+function isSent(c, dt) { return !!S.sent[sentKey(c, dt)]; }
+function milestone(c, dt) { if (!c.dob || !c.dob.y) return null; const age = dt.getFullYear() - c.dob.y; return age > 0 && age % 10 === 0 ? age : null; }
+function langOf(c) { return c.lang || S.settings.defaultLang; }
+function tplKey(lang) { return lang === "zh" ? S.settings.zhScript : lang; }
+function sender(c) { return c.am || S.settings.fallbackSender || "Your Account Manager"; }
+function displayName(c) { return c.preferred || c.name; }
+function fill(str, c) { return str.replace(/\{name\}/g, displayName(c)).replace(/\{company\}/g, c.company || "").replace(/\{am\}/g, sender(c) + (S.settings.senderLine ? "\n" + S.settings.senderLine : "")); }
+function message(c, lang) { const t = S.settings.templates[tplKey(lang)] || DEFAULT_TEMPLATES[tplKey(lang)]; return { subject: fill(t.subject, c).replace(/\n.*/s, ""), body: fill(t.body, c) }; }
+
+function exampleCustomers() {
+  const t = today();
+  const at = (off, y) => { const d = new Date(t); d.setDate(d.getDate() + off); return { d: d.getDate(), m: d.getMonth() + 1, y }; };
+  const rows = [
+    ["Tan Wei Ming", "Tan Holdings Sdn Bhd", at(0, 1976), "012-345 6789", "weiming.tan@example.com", "Daniel Ng", "zh"],
+    ["Nurul Aisyah binti Rahman", "Aisyah Bakery Enterprise", at(1, 1988), "013-220 4512", "aisyah@example.com", "Aina Rosli", "ms"],
+    ["Rajesh Kumar a/l Subramaniam", "RK Logistics Sdn Bhd", at(3, 1972), "016-778 9021", "rajesh@example.com", "Daniel Ng", "en"],
+    ["Lim Mei Ling", "Perak Dental Centre", at(6, 1990), "017-505 3388", "", "Kevin Chew", "zh"],
+    ["Ahmad Faiz bin Ismail", "Faiz Engineering Works", at(12, 1985), "019-412 7700", "faiz@example.com", "Aina Rosli", "ms"],
+    ["Chong Li Ying", "Kinta Valley Florist", at(19, 1994), "011-2345 6789", "liying@example.com", "Kevin Chew", ""],
+    ["Muthu Letchumy a/p Raman", "Sri Muthu Textiles", at(27, 1966), "012-889 1020", "muthu@example.com", "Daniel Ng", "en"],
+    ["Wong Kar Hoe", "WKH Property Agency", at(41, 1980), "", "karhoe@example.com", "", "en"],
+  ];
+  const list = rows.map(([name, company, dob, phone, email, am, lang]) => {
+    const p = normPhone(phone), e = normEmail(email);
+    return validate({ id: custId(name, dob, p.phone), name, preferred: "", company, dob, phone: p.phone, phoneNote: p.note, email: e.email, emailNote: e.note, am, lang });
+  });
+  list.push(validate({ id: custId("Siti Hajar binti Osman", null, "60124455667"), name: "Siti Hajar binti Osman", preferred: "", company: "Hajar Travel & Tours", dob: null, dobError: 'Can\'t read birthday "31/02/1983"', phone: "60124455667", email: "", am: "Aina Rosli", lang: "ms" }));
+  return list;
+}
+
+/* ---------- import ---------- */
+function normHeader(h) { return clean(h).toLowerCase().replace(/[^a-z0-9一-鿿]+/g, " ").trim(); }
+function guessMap(headers) {
+  const norm = headers.map(normHeader), map = {}, used = new Set();
+  for (const f of FIELDS) {
+    let idx = norm.findIndex((h, i) => !used.has(i) && f.syn.includes(h));
+    if (idx < 0) idx = norm.findIndex((h, i) => !used.has(i) && h && f.syn.some(s => s.length > 3 && h.includes(s)));
+    map[f.key] = idx; if (idx >= 0) used.add(idx);
+  }
+  return map;
+}
+function findHeaderRow(rows) {
+  let best = 0, bestScore = -1;
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    const m = guessMap(rows[i].map(String));
+    const score = Object.values(m).filter(x => x >= 0).length;
+    if (score > bestScore) { bestScore = score; best = i; }
+  }
+  return best;
+}
+function buildFromRows(table, map, fmt) {
+  const out = [], skipped = [];
+  const ev = { DMY: 0, MDY: 0, ambiguous: 0 };
+  table.rows.forEach((row) => { const v = map.birthday >= 0 ? row[map.birthday] : ""; const p = parseDOB(v, "DMY"); if (p.order === "DMY") ev.DMY++; if (p.order === "MDY") ev.MDY++; if (p.ambiguous) ev.ambiguous++; });
+  const mixed = ev.DMY > 0 && ev.MDY > 0;
+  table.rows.forEach((row, i) => {
+    const get = k => (map[k] >= 0 ? row[map[k]] : "");
+    const name = clean(get("name"));
+    const rowNo = table.firstRow + i + 1;
+    if (!name) { if (row.some(x => clean(x) !== "")) skipped.push({ row: rowNo, reason: "No customer name" }); return; }
+    const rawB = get("birthday");
+    const dob = parseDOB(rawB, fmt);
+    const p = normPhone(get("phone")), e = normEmail(get("email"));
+    if (dob.error === "Not a real date") dob.error = `Not a real date ("${clean(rawB)}")`;
+    const c = { name, preferred: clean(get("preferred")), company: clean(get("company")), dob: dob.error ? null : { d: dob.d, m: dob.m, y: dob.y }, dobRaw: clean(rawB), dobError: dob.error || null, phone: p.phone, phoneNote: p.note, email: e.email, emailNote: e.note, am: clean(get("am")), lang: normLang(get("lang")), row: rowNo };
+    if (!dob.error && dob.ambiguous && mixed) { c.dob = null; c.dobError = `Date style unclear ("${clean(rawB)}") - this file mixes DD/MM and MM/DD`; }
+    c.id = custId(c.name, c.dob, c.phone);
+    const twin = out.find(o => o.id === c.id);
+    if (twin) { skipped.push({ row: rowNo, reason: `exact duplicate of row ${twin.row}` }); return; }
+    out.push(validate(c));
+  });
+  return { customers: out, skipped, ev, mixed };
+}
+function sheetToTable(ws) {
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" });
+  const h = findHeaderRow(rows);
+  return { headers: (rows[h] || []).map(x => clean(x)), rows: rows.slice(h + 1), firstRow: h + 1 };
+}
+async function readSpreadsheet(buf) {
+  const wb = XLSX.read(buf, { type: "array", cellDates: false });
+  let best = null;
+  for (const n of wb.SheetNames) { const t = sheetToTable(wb.Sheets[n]); t.sheet = n; if (!best || t.rows.length > best.rows.length) best = t; }
+  return best;
+}
+async function readWithClaude(file) {
+  const sample = await capSample;
+  if (!sample) throw new Error("Reading PDFs and photos only works in the Claude version of this app (Claude reads the table). Please export your list to Excel or CSV instead.");
+  const prompt = `You are reading a customer list for a birthday reminder tool. Extract the table exactly as written.
+Return JSON only: {"headers": [..column names..], "rows": [[..cell text..], ...]}.
+Rules: copy every cell's text exactly as it appears - do not correct, reformat, translate, guess or fill in anything. Use "" for an empty or unreadable cell. Keep dates exactly as written (e.g. "05/06/1985"). Include every row. If there is no header row, use headers like "Column 1".`;
+  let opts = { modelTier: "default" }, input = prompt;
+  if (/\.pdf$/i.test(file.name)) {
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+    let text = "";
+    for (let p = 1; p <= Math.min(pdf.numPages, 20); p++) {
+      const tc = await (await pdf.getPage(p)).getTextContent();
+      const lines = {}; tc.items.forEach(it => { const y = Math.round(it.transform[5]); (lines[y] = lines[y] || []).push({ x: it.transform[4], s: it.str }); });
+      text += Object.keys(lines).sort((a, b) => b - a).map(y => lines[y].sort((a, b) => a.x - b.x).map(o => o.s).join(" | ")).join("\n") + "\n";
+    }
+    if (text.replace(/\s|\|/g, "").length > 40) input = prompt + "\n\nThe PDF text (cells separated by |):\n" + text;
+    else {
+      const images = [];
+      for (let p = 1; p <= Math.min(pdf.numPages, 4); p++) { const page = await pdf.getPage(p); const vp = page.getViewport({ scale: 2 }); const cv = document.createElement("canvas"); cv.width = vp.width; cv.height = vp.height; await page.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise; images.push(await new Promise(r => cv.toBlob(r, "image/png"))); }
+      opts.images = images;
+    }
+  } else opts.images = [file];
+  if (opts.images) { const lim = sample.limits ? await sample.limits() : null; if (!lim || !lim.images) throw new Error("Photo reading isn't available here. Please export your list to Excel or CSV."); }
+  let data;
+  try { data = await sample.json(input, opts); }
+  catch (e) { throw new Error(e && e.code === "not_granted" ? "You didn't allow Claude to read the file, so nothing was imported." : "Claude couldn't read this file (" + (e.code || e.message) + "). Try an Excel or CSV export."); }
+  if (!data || !Array.isArray(data.rows)) throw new Error("No table found in this file.");
+  return { headers: (data.headers || []).map(clean), rows: data.rows.map(r => r.map(x => x == null ? "" : String(x))), firstRow: 1, sheet: "read by Claude", fromAI: true };
+}
+async function handleFile(file) {
+  if (!file) return;
+  const busy = openSheet(`<div class="sheet-head"><h2>Reading ${esc(file.name)}…</h2></div><p class="muted">This happens on your device.${/\.(pdf|png|jpe?g|webp)$/i.test(file.name) ? " For PDFs and photos, Claude reads the table - this can take up to a minute." : ""}</p>`);
+  try {
+    let table;
+    if (/\.(xlsx|xls|csv)$/i.test(file.name)) table = await readSpreadsheet(await file.arrayBuffer());
+    else if (/\.(pdf|png|jpe?g|webp)$/i.test(file.name)) table = await readWithClaude(file);
+    else throw new Error("Please choose an Excel (.xlsx/.xls), CSV, PDF or image file.");
+    closeSheet(busy);
+    if (!table || !table.rows.length) throw new Error("No rows found in this file.");
+    table.fileName = file.name;
+    importPreview(table);
+  } catch (e) {
+    closeSheet(busy);
+    openSheet(`<div class="sheet-head"><h2>Couldn't import</h2><button class="x" data-close aria-label="Close">×</button></div><p>${esc(e.message || e)}</p><div class="row"><button class="primary" data-close>OK</button></div>`);
+  }
+}
+function importPreview(table) {
+  const map = guessMap(table.headers);
+  const ev0 = buildFromRows(table, map, "DMY").ev;
+  let fmt = ev0.MDY > 0 && ev0.DMY === 0 ? "MDY" : "DMY";
+  const sh = openSheet("");
+  const render = () => {
+    const res = buildFromRows(table, map, fmt);
+    const ready = res.customers.filter(c => !c.problems.length && !c.warnings.length).length;
+    const check = res.customers.filter(c => !c.problems.length && c.warnings.length).length;
+    const bad = res.customers.filter(c => c.problems.length).length;
+    const missingReq = FIELDS.filter(f => f.required && map[f.key] < 0);
+    const opts = k => `<option value="-1">(not in file)</option>` + table.headers.map((h, i) => `<option value="${i}" ${map[k] === i ? "selected" : ""}>${esc(h || "Column " + (i + 1))}</option>`).join("");
+    const evNote = res.ev.DMY && !res.ev.MDY ? "Your file also has dates like 25/03, so it uses DD/MM." : res.ev.MDY && !res.ev.DMY ? "Your file also has dates like 03/25, so it uses MM/DD." : res.mixed ? "Your file mixes both styles. Unclear dates are set aside for you to fix." : "Nothing in the file shows which style it uses, so please confirm.";
+    sh.innerHTML = `
+      <div class="sheet-head"><div><div class="eyebrow">Step 1 of 1 · Check before importing</div><h2>${esc(table.fileName)}</h2><p class="muted small">${table.rows.length} rows${table.sheet ? " · sheet “" + esc(table.sheet) + "”" : ""}</p></div><button class="x" data-close aria-label="Close">×</button></div>
+      ${table.fromAI ? `<div class="banner warn"><span><strong>Read by Claude from a ${/\.pdf$/i.test(table.fileName) ? "PDF" : "photo"}.</strong> Compare a few rows with the original before importing.</span></div>` : ""}
+      <div class="panel"><h3>Match your columns</h3><div class="scrollx"><table class="map">${FIELDS.map(f => `<tr><td>${f.label}${f.required ? " *" : ""}</td><td><select data-map="${f.key}" id="map-${f.key}">${opts(f.key)}</select></td></tr>`).join("")}</table></div>
+      ${missingReq.length ? `<p class="pill bad">Choose a column for: ${missingReq.map(f => f.label).join(", ")}</p>` : ""}</div>
+      ${res.ev.ambiguous ? `<div class="panel"><h3>${res.ev.ambiguous} dates could be read two ways</h3><p class="small muted">${evNote}</p>
+        <div class="seg" role="group" aria-label="Date style"><button data-fmt="DMY" aria-pressed="${fmt === "DMY"}">05/06 = 5 June (DD/MM)</button><button data-fmt="MDY" aria-pressed="${fmt === "MDY"}">05/06 = May 6 (MM/DD)</button></div></div>` : ""}
+      <div class="stat"><div><b style="color:var(--ok)">${ready}</b><span>ready</span></div><div><b style="color:var(--warn)">${check}</b><span>ready, details to check</span></div><div><b style="color:var(--bad)">${bad}</b><span>no reminder until fixed</span></div></div>
+      ${res.skipped.length ? `<p class="small muted">${res.skipped.length} row(s) skipped: ${res.skipped.slice(0, 5).map(s => "row " + s.row + " (" + s.reason + ")").join(", ")}${res.skipped.length > 5 ? "…" : ""}</p>` : ""}
+      <details ${bad + check ? "open" : ""}><summary>Rows that need attention (${bad + check})</summary>
+        <ul class="issue-list">${res.customers.filter(c => c.problems.length || c.warnings.length).slice(0, 40).map(c => `<li><b>${esc(c.name)}</b> (row ${c.row}): ${esc(c.problems.concat(c.warnings).join("; "))}</li>`).join("") || "<li>None</li>"}</ul></details>
+      <details><summary>Preview first 5 customers</summary><ul class="issue-list">${res.customers.slice(0, 5).map(c => `<li>${esc(c.name)} · birthday <b>${fmtDob(c.dob)}</b> (file: “${esc(c.dobRaw)}”) · ${esc(fmtPhone(c.phone) || "no phone")}</li>`).join("")}</ul></details>
+      <p class="small muted">Nothing is saved until you choose below. Customers with problems are still imported so you can fix them in the Customers tab.</p>
+      <div class="row">
+        <button class="primary" data-act="replace" ${missingReq.length ? "disabled" : ""}>${S.isExample || !S.customers.length ? "Import " + res.customers.length + " customers" : "Replace my list"}</button>
+        ${!S.isExample && S.customers.length ? `<button data-act="add" ${missingReq.length ? "disabled" : ""}>Add to my list</button>` : ""}
+        <button data-close>Cancel</button>
+      </div>`;
+    sh.querySelectorAll("[data-map]").forEach(sel => sel.onchange = () => { map[sel.dataset.map] = +sel.value; render(); });
+    sh.querySelectorAll("[data-fmt]").forEach(b => b.onclick = () => { fmt = b.dataset.fmt; render(); });
+    sh.querySelector('[data-act="replace"]').onclick = async () => {
+      if (!S.isExample && S.customers.length) {
+        const ok = await confirmBox("Replace your customer list?", `Your current ${S.customers.length} customers will be replaced by ${res.customers.length} from “${table.fileName}”. Sent history is kept.`, "Replace list");
+        if (!ok) return;
+      }
+      S.customers = res.customers; S.skipped = res.skipped; S.isExample = false; save(); closeSheet(sh); renderAll(); toast(`Imported ${res.customers.length} customers`); show("upcoming");
+    };
+    const addBtn = sh.querySelector('[data-act="add"]');
+    if (addBtn) addBtn.onclick = async () => {
+      const have = new Set(S.customers.map(c => c.id)); const fresh = res.customers.filter(c => !have.has(c.id));
+      const ok = await confirmBox("Add to your list?", `${fresh.length} new customers will be added. ${res.customers.length - fresh.length} are already in your list and will be left as they are.`, "Add customers");
+      if (!ok) return;
+      S.customers = S.customers.concat(fresh); save(); closeSheet(sh); renderAll(); toast(`Added ${fresh.length} customers`);
+    };
+  };
+  render();
+}
+
+/* ---------- modal helpers ---------- */
+function openSheet(html) {
+  const bd = document.createElement("div"); bd.className = "backdrop";
+  const sh = document.createElement("div"); sh.className = "sheet"; sh.setAttribute("role", "dialog"); sh.setAttribute("aria-modal", "true"); sh.innerHTML = html;
+  bd.appendChild(sh); document.body.appendChild(bd); document.body.style.overflow = "hidden";
+  bd.addEventListener("click", e => { if (e.target === bd || e.target.closest("[data-close]")) closeSheet(sh); });
+  return sh;
+}
+function closeSheet(sh) { if (sh && sh.parentNode) sh.parentNode.remove(); if (!document.querySelector(".backdrop")) document.body.style.overflow = ""; }
+function confirmBox(title, body, okLabel, danger) {
+  return new Promise(res => {
+    const sh = openSheet(`<div class="sheet-head"><h2>${esc(title)}</h2></div><p>${esc(body)}</p><div class="row"><button class="${danger ? "danger solid" : "primary"}" data-ok>${esc(okLabel)}</button><button data-no>Cancel</button></div>`);
+    sh.parentNode.style.zIndex = 60;
+    const done = v => { closeSheet(sh); res(v); };
+    sh.querySelector("[data-ok]").onclick = () => done(true);
+    sh.querySelector("[data-no]").onclick = () => done(false);
+    sh.parentNode.addEventListener("click", e => { if (e.target === sh.parentNode) done(false); });
+  });
+}
+
+/* ---------- files out ---------- */
+async function saveFile(filename, blob) {
+  const dl = await capDownloads;
+  if (dl) {
+    try { await dl.save({ filename, data: blob }); toast("Saved " + filename); }
+    catch (e) { toast(e && e.code === "declined" ? "Download cancelled" : "Couldn't save the file (" + ((e && (e.code || e.message)) || "error") + ")"); }
+    return;
+  }
+  if (!window.claude && matchMedia("(pointer: coarse)").matches && navigator.canShare) {
+    const file = new File([blob], filename, { type: blob.type || (filename.endsWith(".pdf") ? "application/pdf" : filename.endsWith(".png") ? "image/png" : "application/octet-stream") });
+    if (navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file] }); return; }
+      catch (e) { if (e && e.name === "AbortError") return; }
+    }
+  }
+  if (!window.claude) { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); toast("Saved " + filename); return; }
+  toast("Saving files isn't available in this view.");
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); toast("Copied - paste it into WhatsApp or email"); return true; }
+  catch (e) { toast("Copy blocked - select the text and copy it manually"); return false; }
+}
+
+/* ---------- card drawing ---------- */
+async function ensureFonts(text) {
+  const specs = ['400 100px "DM Serif Display"', '800 100px "Bricolage Grotesque"', '600 60px "Figtree"', '400 40px "Figtree"', '600 60px "Caveat"', '700 100px "Noto Serif SC"', '500 40px "Noto Sans SC"', '700 100px "Noto Serif TC"', '500 40px "Noto Sans TC"'];
+  try { await Promise.race([Promise.all(specs.map(s => document.fonts.load(s, text))), new Promise(r => setTimeout(r, 4000))]); } catch (e) {}
+}
+function wrapLines(ctx, text, maxW) {
+  const cjk = /[　-鿿＀-￯]/.test(text);
+  const tokens = cjk ? Array.from(text) : text.split(" ");
+  const lines = []; let cur = "";
+  for (const t of tokens) { const test = cur ? (cjk ? cur + t : cur + " " + t) : t; if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = t; } else cur = test; }
+  if (cur) lines.push(cur); return lines;
+}
+function fitFont(ctx, text, weight, family, start, min, maxW) { let s = start; do { ctx.font = `${weight} ${s}px ${family}`; if (ctx.measureText(text).width <= maxW) break; s -= 4; } while (s > min); return s; }
+function drawHibiscus(x, cx, cy, r, rot, petal, core) {
+  x.save(); x.translate(cx, cy); x.rotate(rot);
+  for (let i = 0; i < 5; i++) {
+    x.save(); x.rotate(i * Math.PI * 2 / 5);
+    x.beginPath(); x.moveTo(0, 0);
+    x.bezierCurveTo(r * .55, -r * .25, r * 1.05, -r * .55, r * .95, -r * .05);
+    x.bezierCurveTo(r * 1.05, r * .3, r * .5, r * .45, 0, 0);
+    x.fillStyle = petal; x.fill();
+    x.strokeStyle = "rgba(0,0,0,.12)"; x.lineWidth = r * .02; x.beginPath(); x.moveTo(r * .1, 0); x.lineTo(r * .8, -r * .1); x.stroke();
+    x.restore();
+  }
+  x.beginPath(); x.arc(0, 0, r * .16, 0, Math.PI * 2); x.fillStyle = core; x.fill();
+  x.strokeStyle = "#F7D774"; x.lineWidth = r * .035; x.beginPath(); x.moveTo(0, 0); x.lineTo(r * .62, r * .5); x.stroke();
+  for (let k = 0; k < 5; k++) { x.beginPath(); x.arc(r * (.5 + k * .03), r * (.4 + k * .025) + (k % 2 ? -r * .05 : r * .05), r * .04, 0, Math.PI * 2); x.fillStyle = "#F7D774"; x.fill(); }
+  x.restore();
+}
+function cardStrings(c, lang) { const k = tplKey(lang); const t = CARD_TEXT[k] || CARD_TEXT.en; return { head: t.head, line: t.line, sign: t.sign, name: displayName(c), from: sender(c), sub: S.settings.senderLine, cjk: lang === "zh", tc: k === "zht" }; }
+async function drawCard(c, lang, style, W = 1080) {
+  const H = Math.round(W * 1.25), u = W / 1080;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const x = cv.getContext("2d");
+  const t = cardStrings(c, lang);
+  await ensureFonts(t.head + t.line + t.name + t.from + t.sign + "Happy");
+  const serifC = t.tc ? '"Noto Serif TC", serif' : '"Noto Serif SC", serif', sansC = t.tc ? '"Noto Sans TC", sans-serif' : '"Noto Sans SC", sans-serif';
+  const headFam = t.cjk ? serifC : (style === "confetti" ? '"Bricolage Grotesque", sans-serif' : '"DM Serif Display", serif');
+  const headW = t.cjk ? 700 : (style === "confetti" ? 800 : 400);
+  const bodyFam = '"Figtree", ' + sansC;
+  const R = rng(hash(c.id + style));
+  let ink, nameCol, lineCol, signCol;
+  if (style === "hibiscus") {
+    const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, "#0F1838"); g.addColorStop(1, "#1C2C60"); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    for (let i = 0; i < 70; i++) { x.beginPath(); x.arc(R() * W, R() * H, (1 + R() * 3.5) * u, 0, 7); x.fillStyle = `rgba(233,196,106,${.25 + R() * .5})`; x.fill(); }
+    drawHibiscus(x, W * .86, H * .1, 250 * u, .3, "#D7264F", "#7A0F2B");
+    drawHibiscus(x, W * .64, H * .02, 120 * u, 1.2, "#F06A8A", "#8C1736");
+    drawHibiscus(x, W * .1, H * .92, 230 * u, -.6, "#D7264F", "#7A0F2B");
+    drawHibiscus(x, W * .32, H * 1.0, 110 * u, 2, "#F06A8A", "#8C1736");
+    ink = "#FFFFFF"; nameCol = "#FFC9D6"; lineCol = "rgba(255,255,255,.86)"; signCol = "#E9C46A";
+  } else if (style === "confetti") {
+    x.fillStyle = "#FFFFFF"; x.fillRect(0, 0, W, H);
+    const g = x.createRadialGradient(W * .5, H * .45, 50 * u, W * .5, H * .45, W * .75); g.addColorStop(0, "#FFEFF3"); g.addColorStop(1, "#FFFFFF"); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    const cols = ["#C8254F", "#F4A259", "#2A9D8F", "#3D5A80", "#E9C46A", "#9B5DE5"];
+    for (let i = 0; i < 120; i++) { const px = R() * W, py = R() * H; if (py > H * .3 && py < H * .82 && px > W * .1 && px < W * .9) continue; x.save(); x.translate(px, py); x.rotate(R() * 6.3); x.fillStyle = cols[Math.floor(R() * cols.length)]; if (R() > .5) x.fillRect(-9 * u, -4 * u, 18 * u, 8 * u); else { x.beginPath(); x.arc(0, 0, 6 * u, 0, 7); x.fill(); } x.restore(); }
+    [[.2, .14, "#C8254F"], [.33, .1, "#F4A259"], [.8, .13, "#2A9D8F"]].forEach(([bx, by, col]) => { const X = W * bx, Y = H * by; x.strokeStyle = "rgba(20,27,45,.35)"; x.lineWidth = 2 * u; x.beginPath(); x.moveTo(X, Y + 95 * u); x.quadraticCurveTo(X + 20 * u, Y + 160 * u, X - 5 * u, Y + 230 * u); x.stroke(); x.beginPath(); x.ellipse(X, Y, 70 * u, 90 * u, 0, 0, 7); x.fillStyle = col; x.fill(); x.beginPath(); x.ellipse(X - 22 * u, Y - 30 * u, 14 * u, 24 * u, -.4, 0, 7); x.fillStyle = "rgba(255,255,255,.35)"; x.fill(); });
+    ink = "#141B2D"; nameCol = "#C8254F"; lineCol = "#3B4458"; signCol = "#3D5A80";
+  } else {
+    x.fillStyle = "#5A0F24"; x.fillRect(0, 0, W, H);
+    const band = (y0, h) => { x.fillStyle = "#4A0B1D"; x.fillRect(0, y0, W, h); x.strokeStyle = "#D4A64A"; x.lineWidth = 3 * u; const s = 60 * u; for (let bx = -s; bx < W + s; bx += s) { x.beginPath(); x.moveTo(bx, y0 + h / 2); x.lineTo(bx + s / 2, y0 + 10 * u); x.lineTo(bx + s, y0 + h / 2); x.lineTo(bx + s / 2, y0 + h - 10 * u); x.closePath(); x.stroke(); x.beginPath(); x.arc(bx + s / 2, y0 + h / 2, 5 * u, 0, 7); x.fillStyle = "#D4A64A"; x.fill(); } x.fillStyle = "#D4A64A"; x.fillRect(0, y0, W, 4 * u); x.fillRect(0, y0 + h - 4 * u, W, 4 * u); };
+    band(0, 130 * u); band(H - 130 * u, 130 * u);
+    x.strokeStyle = "rgba(212,166,74,.7)"; x.lineWidth = 2 * u; x.strokeRect(60 * u, 170 * u, W - 120 * u, H - 340 * u);
+    x.save(); x.translate(W / 2, 250 * u); x.rotate(Math.PI / 4); x.strokeStyle = "#D4A64A"; x.lineWidth = 3 * u; x.strokeRect(-22 * u, -22 * u, 44 * u, 44 * u); x.restore();
+    ink = "#F2D48A"; nameCol = "#FFFFFF"; lineCol = "rgba(255,240,220,.88)"; signCol = "#F2D48A";
+  }
+  x.textAlign = "center"; x.textBaseline = "alphabetic";
+  const maxW = W * .78;
+  let y = style === "songket" ? 450 * u : style === "confetti" ? 560 * u : 520 * u;
+  let hs = fitFont(x, t.head, headW, headFam, (t.cjk ? 170 : 132) * u, 60 * u, maxW);
+  const headLines = t.cjk ? [t.head] : wrapLines(x, t.head, maxW);
+  if (headLines.length > 1) { hs = Math.min(hs, 120 * u); x.font = `${headW} ${hs}px ${headFam}`; }
+  x.fillStyle = ink; headLines.forEach((l, i) => x.fillText(l, W / 2, y + i * hs * 1.05)); y += (headLines.length - 1) * hs * 1.05 + 110 * u;
+  const ns = fitFont(x, t.name, 600, bodyFam, 68 * u, 34 * u, maxW);
+  x.fillStyle = nameCol; x.fillText(t.name, W / 2, y); y += ns * .5 + 70 * u;
+  x.font = `400 ${40 * u}px ${bodyFam}`; x.fillStyle = lineCol;
+  wrapLines(x, t.line, W * .7).forEach(l => { x.fillText(l, W / 2, y); y += 56 * u; });
+  y = Math.max(y + 60 * u, H * .74);
+  x.font = `400 ${32 * u}px ${bodyFam}`; x.fillStyle = lineCol; x.fillText(t.sign, W / 2, y); y += 78 * u;
+  fitFont(x, t.from, 600, '"Caveat", ' + sansC, 76 * u, 36 * u, maxW); x.fillStyle = signCol; x.fillText(t.from, W / 2, y);
+  if (t.sub) { y += 46 * u; x.font = `500 ${28 * u}px ${bodyFam}`; x.fillStyle = lineCol; x.fillText(t.sub, W / 2, y); }
+  return cv;
+}
+const toBlob = (cv, type = "image/png", q) => new Promise(r => cv.toBlob(r, type, q));
+
+/* ---------- PDF ---------- */
+const PDF_SAFE = /[^\x20-\x7E\xA0-\xFF\n]/;
+const stripEmoji = s => s.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, "").replace(/[–—]/g, "-").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/ +\n/g, "\n").replace(/ {2,}/g, " ");
+function textImage(text, wMm, pt, weight = 400, color = "#141B2D") {
+  const pxmm = 12, fpx = pt * .3528 * pxmm, cv = document.createElement("canvas"), x = cv.getContext("2d");
+  const font = `${weight} ${fpx}px "Figtree", "Noto Sans SC", "Noto Sans TC", sans-serif`; x.font = font;
+  const lines = []; text.split("\n").forEach(p => { if (!p) lines.push(""); else lines.push(...wrapLines(x, p, wMm * pxmm)); });
+  const lh = fpx * 1.45; cv.width = Math.ceil(wMm * pxmm); cv.height = Math.ceil(lines.length * lh + fpx * .4);
+  x.font = font; x.fillStyle = color; x.textBaseline = "top"; lines.forEach((l, i) => x.fillText(l, 0, i * lh + fpx * .1));
+  return { url: cv.toDataURL("image/png"), h: cv.height / pxmm };
+}
+function pdfText(doc, text, x, y, w, pt, weight = 400, color = "#141B2D") {
+  text = stripEmoji(String(text ?? ""));
+  if (PDF_SAFE.test(text)) { const im = textImage(text, w, pt, weight, color); doc.addImage(im.url, "PNG", x, y, w, im.h); return im.h; }
+  doc.setFont("helvetica", weight >= 600 ? "bold" : "normal"); doc.setFontSize(pt); doc.setTextColor(color);
+  const lines = doc.splitTextToSize(text, w); const lh = pt * .3528 * 1.45;
+  doc.text(lines, x, y + pt * .3528, { baseline: "alphabetic", lineHeightFactor: 1.45 }); return lines.length * lh;
+}
+function measureText(doc, text, w, pt) {
+  text = stripEmoji(String(text ?? ""));
+  if (PDF_SAFE.test(text)) return textImage(text, w, pt).h;
+  doc.setFontSize(pt); return doc.splitTextToSize(text, w).length * pt * .3528 * 1.45;
+}
+function monthList(year, month) {
+  return S.customers.filter(c => c.dob && c.dob.m === month + 1).map(c => ({ c, dt: occ(c.dob, year) })).sort((a, b) => a.dt - b.dt || a.c.name.localeCompare(b.c.name));
+}
+function prepBy(dt) { const p = new Date(dt); p.setDate(p.getDate() - S.settings.windowDays); return p; }
+async function buildMonthPDF(year, month) {
+  const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit: "mm", format: "a4", compress: true });
+  const list = monthList(year, month), dups = duplicateIds(), title = `${MONTHS[month]} ${year}`;
+  const langs = Object.keys(LANGS).filter(l => S.settings.pdfLangs[l]);
+  const ACC = "#C8254F", MUT = "#5B6478";
+  const footer = () => { doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(MUT); doc.text(`Customer Birthday Reminder - ${title} - Contains customer personal data. Handle under PDPA; do not forward.`, 15, 289); doc.text(`Page ${doc.getNumberOfPages()}`, 195, 289, { align: "right" }); };
+  // summary page
+  doc.setFillColor(ACC); doc.rect(0, 0, 210, 6, "F");
+  pdfText(doc, "Customer birthdays", 15, 14, 180, 11, 600, MUT);
+  pdfText(doc, title, 15, 20, 180, 26, 700);
+  pdfText(doc, `${list.length} customer${list.length === 1 ? "" : "s"} - generated ${fmtDate(today())} - reminders ${S.settings.windowDays} days before each birthday`, 15, 34, 180, 10, 400, MUT);
+  let y = 46;
+  const cols = [[15, 24, "Birthday"], [40, 52, "Customer"], [93, 38, "Company"], [132, 32, "Phone"], [165, 30, "Acct manager"]];
+  const head = () => { doc.setFillColor("#F1F3F8"); doc.rect(15, y - 4.5, 180, 7, "F"); cols.forEach(([cx, , l]) => pdfText(doc, l, cx + 1, y - 3.6, 40, 8.5, 700, MUT)); y += 5; };
+  head();
+  if (!list.length) { pdfText(doc, "No customer birthdays this month.", 15, y + 2, 180, 11); }
+  for (const { c, dt } of list) {
+    const cells = [`${dt.getDate()} ${MONTHS[month].slice(0, 3)} (${DOW[dt.getDay()]})\nPrepare by ${prepBy(dt).getDate()} ${MONTHS[prepBy(dt).getMonth()].slice(0, 3)}`, c.name + (milestone(c, dt) ? `\nTurning ${milestone(c, dt)}` : ""), c.company || "-", fmtPhone(c.phone) || "-", sender(c)];
+    if (y > 270) { footer(); doc.addPage(); y = 20; head(); }
+    let rh = 0; cols.forEach(([cx, w], i) => { rh = Math.max(rh, pdfText(doc, cells[i], cx + 1, y, w - 2, 9, i === 1 ? 600 : 400)); });
+    y += rh + 2; doc.setDrawColor("#E0E4ED"); doc.line(15, y, 195, y); y += 2.5;
+  }
+  const notIn = S.customers.filter(c => c.problems.length);
+  if (notIn.length) {
+    y += 6; if (y > 250) { footer(); doc.addPage(); y = 20; }
+    y += pdfText(doc, `Not included - ${notIn.length} customer${notIn.length === 1 ? "" : "s"} need fixing (no usable birthday)`, 15, y, 180, 11, 700, "#B42318") + 2;
+    for (const c of notIn) { if (y > 278) { footer(); doc.addPage(); y = 20; } y += pdfText(doc, `- ${c.name}: ${c.problems.join("; ")}`, 17, y, 176, 9, 400) + 1; }
+  }
+  footer();
+  // one page per customer
+  for (const { c, dt } of list) {
+    doc.addPage(); doc.setFillColor(ACC); doc.rect(0, 0, 210, 6, "F");
+    const lang = langOf(c);
+    const cv = await drawCard(c, lang, S.settings.style, 720);
+    doc.addImage(cv.toDataURL("image/jpeg", .86), "JPEG", 15, 14, 64, 80);
+    let ry = 14;
+    const days = daysBetween(today(), dt);
+    ry += pdfText(doc, `${fmtDate(dt)}${days >= 0 && days <= 31 ? "  (in " + days + " day" + (days === 1 ? "" : "s") + ")" : ""}`, 86, ry, 109, 10, 600, ACC) + 1;
+    ry += pdfText(doc, c.name, 86, ry, 109, 17, 700) + 1;
+    if (c.preferred) ry += pdfText(doc, `Preferred name: ${c.preferred}`, 86, ry, 109, 9.5, 400, MUT);
+    if (c.company) ry += pdfText(doc, c.company, 86, ry, 109, 11, 400, MUT) + 2;
+    const det = [["Prepare by", fmtDate(prepBy(dt))], ["WhatsApp", fmtPhone(c.phone) || "- not available -"], ["Email", c.email || "- not available -"], ["Account manager", sender(c)], ["Card language", LANGS[lang]]];
+    if (milestone(c, dt)) det.push(["Milestone", `Turning ${milestone(c, dt)}`]);
+    ry += 3;
+    det.forEach(([k, v]) => { pdfText(doc, k, 86, ry, 34, 9, 600, MUT); ry += Math.max(pdfText(doc, v, 120, ry, 75, 9.5), 4.6) + 1.2; });
+    const w = warningsOf(c, dups); if (w.length) { ry += 2; ry += pdfText(doc, "Check: " + w.join("; "), 86, ry, 109, 8.5, 400, "#9A5B00"); }
+    ry += 4; doc.setDrawColor("#E0E4ED"); doc.line(86, ry, 195, ry); ry += 4;
+    pdfText(doc, "WhatsApp: tap the number, paste the message, attach the card. Email: use the subject line shown.", 86, ry, 109, 8.5, 400, MUT);
+    let my = Math.max(100, ry + 10);
+    // one message block: heading, subject, body, with a rule on the left; returns its height
+    const block = (l, x0, y0, w, pt, dry) => {
+      const m = message(c, l), hd = `${LANGS[l]} message${l === lang ? " (suggested)" : ""}`;
+      if (dry) return 13 + measureText(doc, "Subject: " + m.subject, w, pt - 1) + measureText(doc, m.body, w, pt);
+      let yy = y0 + 4;
+      yy += pdfText(doc, hd, x0 + 4, yy, w, pt, 700, ACC) + 3;
+      yy += pdfText(doc, "Subject: " + m.subject, x0 + 4, yy, w, pt - 1, 600, MUT) + 2;
+      yy += pdfText(doc, m.body, x0 + 4, yy, w, pt, 400) + 2;
+      doc.setDrawColor(ACC); doc.setLineWidth(.6); doc.line(x0 + .5, y0 + 2, x0 + .5, yy); doc.setLineWidth(.2);
+      return yy - y0;
+    };
+    const order = [lang, ...langs.filter(k => k !== lang)].filter(k => langs.includes(k));
+    if (order.length) {
+      if (my + block(order[0], 15, my, 176, 10, true) > 282) { footer(); doc.addPage(); my = 18; }
+      my += block(order[0], 15, my, 176, 10) + 6;
+      const rest = order.slice(1);
+      if (rest.length) {
+        const cw = rest.length === 1 ? 176 : 84;
+        const need = Math.max(...rest.map(l => block(l, 0, 0, cw, 9, true)));
+        if (my + need > 282) { footer(); doc.addPage(); my = 18; }
+        my += Math.max(...rest.map((l, i) => block(l, 15 + i * 92, my, cw, 9))) + 6;
+      }
+    }
+    footer();
+  }
+  return doc.output("blob");
+}
+
+/* ---------- ICS (only where real file downloads work) ---------- */
+function buildICS() {
+  const pad = n => String(n).padStart(2, "0"), ymd = d => d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate());
+  const escI = s => String(s).replace(/[\\;,]/g, m => "\\" + m).replace(/\n/g, "\\n");
+  const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Customer Birthday Reminder//EN", "CALSCALE:GREGORIAN"];
+  const t = today(), stamp = ymd(t) + "T000000Z";
+  for (const c of S.customers.filter(c => c.dob)) {
+    const bd = nextBday(c, t), rem = prepBy(bd), end = new Date(rem); end.setDate(end.getDate() + 1);
+    L.push("BEGIN:VEVENT", `UID:${c.id}-remind@cbr`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${ymd(rem)}`, `DTEND;VALUE=DATE:${ymd(end)}`, "RRULE:FREQ=YEARLY", `SUMMARY:${escI(`Birthday in ${S.settings.windowDays} days: ${c.name}`)}`, `DESCRIPTION:${escI(`${c.name}${c.company ? " (" + c.company + ")" : ""} - birthday ${c.dob.d} ${MONTHS[c.dob.m - 1]}. Open Customer Birthday Reminder to prepare the wish. AM: ${sender(c)}`)}`, "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Birthday reminder", "TRIGGER:PT9H", "END:VALARM", "END:VEVENT");
+  }
+  const first = new Date(t.getFullYear(), t.getMonth() + 1, 1), fe = new Date(first); fe.setDate(2);
+  L.push("BEGIN:VEVENT", "UID:monthly-run@cbr", `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${ymd(first)}`, `DTEND;VALUE=DATE:${ymd(fe)}`, "RRULE:FREQ=MONTHLY", "SUMMARY:Download this month's customer birthday PDF", "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Monthly birthday list", "TRIGGER:PT9H", "END:VALARM", "END:VEVENT", "END:VCALENDAR");
+  return L.join("\r\n");
+}
+
+/* ---------- views ---------- */
+let current = "upcoming";
+function show(v) {
+  current = v;
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.view === v)));
+  document.querySelectorAll("section.view").forEach(s => s.hidden = s.id !== "view-" + v);
+}
+function leaf(dt) { return `<div class="leaf" aria-hidden="true"><div class="m">${MON3[dt.getMonth()]}</div><div class="d">${dt.getDate()}</div><div class="w">${DOW[dt.getDay()]}</div></div>`; }
+function whenPill(days) { if (days === 0) return `<span class="pill today">Today</span>`; if (days === 1) return `<span class="pill soon">Tomorrow</span>`; if (days <= S.settings.windowDays) return `<span class="pill soon">In ${days} days</span>`; return `<span class="pill later">In ${days} days</span>`; }
+function itemHTML(c, dt, days, dups) {
+  const sent = isSent(c, dt), w = warningsOf(c, dups), ms = milestone(c, dt);
+  return `<button class="item" data-open="${c.id}" data-y="${dt.getFullYear()}">${leaf(dt)}<div class="who"><b>${esc(c.name)}</b><span>${esc([c.company, "AM: " + sender(c)].filter(Boolean).join(" · "))}</span>
+    ${ms || w.length ? `<div class="chips">${ms ? `<span class="pill mile">Turning ${ms}</span>` : ""}${w.length ? `<span class="pill warn">${w.length} detail${w.length > 1 ? "s" : ""} to check</span>` : ""}</div>` : ""}</div>
+    <div class="right">${sent ? `<span class="pill sent">✓ Sent</span>` : whenPill(days)}</div></button>`;
+}
+function renderUpcoming() {
+  const t = today(), win = S.settings.windowDays, dups = duplicateIds();
+  const all = S.customers.filter(c => c.dob).map(c => { const dt = nextBday(c, t); return { c, dt, days: daysBetween(t, dt) }; }).sort((a, b) => a.days - b.days || a.c.name.localeCompare(b.c.name));
+  const due = all.filter(o => o.days <= win), later = all.filter(o => o.days > win && o.days <= 31);
+  const todo = due.filter(o => !isSent(o.c, o.dt)).length;
+  const broken = S.customers.filter(c => c.problems.length).length;
+  const el = $("#view-upcoming");
+  el.innerHTML = `
+    ${broken ? `<div class="banner warn"><span><strong>${broken} customer${broken > 1 ? "s" : ""} won't get reminders</strong> because the birthday is missing or unreadable.</span><button data-goto="customers" data-filter="fix">Fix now</button></div>` : ""}
+    <div class="panel">
+      <div class="row" style="justify-content:space-between"><div><div class="eyebrow">Next ${win} days</div><h2>${due.length ? (todo ? `${todo} wish${todo > 1 ? "es" : ""} to send` : "All wishes sent ✓") : "No birthdays in the next " + win + " days"}</h2></div></div>
+      <div class="list">${due.map(o => itemHTML(o.c, o.dt, o.days, dups)).join("") || `<div class="empty">Nothing to send right now. The next birthday is ${all[0] ? esc(all[0].c.name) + " on " + fmtDate(all[0].dt, false) : "not set yet - import your list"}.</div>`}</div>
+      ${due.length ? `<p class="small muted">Tap a customer to get the message and card.</p>` : ""}
+    </div>
+    <div class="panel"><div class="eyebrow">Coming up - next 31 days</div>
+      <div class="list">${later.map(o => itemHTML(o.c, o.dt, o.days, dups)).join("") || `<div class="empty">No other birthdays in the next month.</div>`}</div>
+    </div>`;
+}
+let monthSel = null;
+function renderMonth() {
+  const t = today();
+  if (!monthSel) monthSel = { y: t.getFullYear(), m: t.getMonth() };
+  const opts = []; for (let i = -1; i < 12; i++) { const d = new Date(t.getFullYear(), t.getMonth() + i, 1); opts.push(`<option value="${d.getFullYear()}-${d.getMonth()}" ${d.getFullYear() === monthSel.y && d.getMonth() === monthSel.m ? "selected" : ""}>${MONTHS[d.getMonth()]} ${d.getFullYear()}</option>`); }
+  const list = monthList(monthSel.y, monthSel.m), dups = duplicateIds();
+  const el = $("#view-month");
+  el.innerHTML = `
+    <div class="panel">
+      <div class="row"><label class="field grow">Month<select id="monthPick">${opts.join("")}</select></label></div>
+      <div class="row"><button class="primary grow" id="pdfBtn" ${list.length ? "" : "disabled"}>Download ${MONTHS[monthSel.m]} PDF (${list.length})</button></div>
+      <p class="small muted">The PDF has a summary page, then one page per customer with the card and the messages in ${Object.keys(LANGS).filter(l => S.settings.pdfLangs[l]).map(l => LANGS[l]).join(", ")}. Change languages in Settings.</p>
+    </div>
+    <div class="list">${list.map(({ c, dt }) => itemHTML(c, dt, daysBetween(t, dt), dups)).join("") || `<div class="empty">No customer birthdays in ${MONTHS[monthSel.m]}.</div>`}</div>`;
+  $("#monthPick").onchange = e => { const [y, m] = e.target.value.split("-").map(Number); monthSel = { y, m }; renderMonth(); };
+  $("#pdfBtn").onclick = async e => {
+    const b = e.currentTarget; b.disabled = true; const old = b.textContent; b.textContent = "Building PDF…";
+    try { const blob = await buildMonthPDF(monthSel.y, monthSel.m); await saveFile(`Customer-Birthdays-${MONTHS[monthSel.m]}-${monthSel.y}.pdf`, blob); }
+    catch (err) { toast("Couldn't build the PDF: " + err.message); }
+    b.disabled = false; b.textContent = old;
+  };
+}
+let custFilter = "all", custQuery = "";
+function renderCustomers() {
+  const dups = duplicateIds();
+  const fixN = S.customers.filter(c => c.problems.length).length, chkN = S.customers.filter(c => !c.problems.length && warningsOf(c, dups).length).length;
+  let list = S.customers.slice().sort((a, b) => a.name.localeCompare(b.name));
+  if (custFilter === "fix") list = list.filter(c => c.problems.length);
+  if (custFilter === "check") list = list.filter(c => !c.problems.length && warningsOf(c, dups).length);
+  if (custQuery) { const q = custQuery.toLowerCase(); list = list.filter(c => [c.name, c.company, c.am, c.phone, c.email].join(" ").toLowerCase().includes(q)); }
+  const el = $("#view-customers");
+  el.innerHTML = `
+    <div class="panel">
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Import a customer list">
+        <h3>Import your customer list</h3>
+        <p class="small muted">Excel (.xlsx, .xls) or CSV works best. PDF and photos (PNG/JPG) are read by Claude in the online version.<br>Columns: customer name, company, birthday, phone, email, account manager.</p>
+        <span class="btn primary">Choose file</span>
+      </div>
+      <div class="row"><button id="tplBtn">Get blank Excel template</button><button id="exportBtn" ${S.customers.length ? "" : "disabled"}>Back up my list (.xlsx)</button>${!window.claude ? `<button id="icsBtn" ${S.customers.length ? "" : "disabled"}>Add reminders to my calendar (.ics)</button>` : ""}</div>
+    </div>
+    <div class="panel">
+      <div class="row"><input type="search" id="custSearch" placeholder="Search name, company, phone…" value="${esc(custQuery)}" class="grow" style="flex:1 1 200px"></div>
+      <div class="seg" role="group" aria-label="Filter"><button data-f="all" aria-pressed="${custFilter === "all"}">All (${S.customers.length})</button><button data-f="fix" aria-pressed="${custFilter === "fix"}">Needs fixing (${fixN})</button><button data-f="check" aria-pressed="${custFilter === "check"}">Check details (${chkN})</button></div>
+      <div class="list">${list.map(c => { const w = warningsOf(c, dups); return `<button class="item" data-edit="${c.id}" style="grid-template-columns:1fr auto"><div class="who"><b>${esc(c.name)}</b><span>${esc([c.company, fmtPhone(c.phone), c.email].filter(Boolean).join(" · ") || "No contact details")}</span>
+        ${c.problems.length || w.length ? `<div class="chips">${c.problems.map(p => `<span class="pill bad">${esc(p)}</span>`).join("")}${w.map(p => `<span class="pill warn">${esc(p)}</span>`).join("")}</div>` : ""}</div>
+        <div class="right"><span class="small" style="font-variant-numeric:tabular-nums">${fmtDob(c.dob)}</span><span class="small muted">Edit</span></div></button>`; }).join("") || `<div class="empty">No customers match.</div>`}</div>
+      ${S.skipped && S.skipped.length ? `<p class="small muted">${S.skipped.length} row(s) in your last file were skipped: ${esc(S.skipped.map(s => "row " + s.row + " (" + s.reason + ")").join(", "))}.</p>` : ""}
+    </div>`;
+  const drop = $("#drop"), fi = $("#fileInput");
+  drop.onclick = () => fi.click(); drop.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fi.click(); } };
+  drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); }; drop.ondragleave = () => drop.classList.remove("over");
+  drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); handleFile(e.dataTransfer.files[0]); };
+  $("#custSearch").oninput = e => { custQuery = e.target.value; const pos = e.target.selectionStart; renderCustomers(); const s = $("#custSearch"); s.focus(); s.setSelectionRange(pos, pos); };
+  el.querySelectorAll("[data-f]").forEach(b => b.onclick = () => { custFilter = b.dataset.f; renderCustomers(); });
+  $("#tplBtn").onclick = () => { const ws = XLSX.utils.aoa_to_sheet([["Customer Name", "Company", "Birthday", "Phone", "Email", "Account Manager", "Language"], ["Tan Wei Ming", "Tan Holdings Sdn Bhd", "15/03/1978", "012-345 6789", "weiming@example.com", "Daniel Ng", "Chinese"]]); ws["!cols"] = [28, 28, 14, 16, 28, 20, 12].map(w => ({ wch: w })); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Customers"); saveFile("Customer-List-Template.xlsx", new Blob([XLSX.write(wb, { type: "array", bookType: "xlsx" })])); };
+  $("#exportBtn").onclick = () => { const rows = [["Customer Name", "Preferred Name", "Company", "Birthday", "Phone", "Email", "Account Manager", "Language", "Problems"]].concat(S.customers.map(c => [c.name, c.preferred, c.company, c.dob ? `${String(c.dob.d).padStart(2, "0")}/${String(c.dob.m).padStart(2, "0")}${c.dob.y ? "/" + c.dob.y : ""}` : c.dobRaw || "", c.phone ? "+" + c.phone : "", c.email, c.am, c.lang ? LANGS[c.lang] : "", c.problems.concat(c.warnings).join("; ")])); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "Customers"); saveFile("Customer-List-Backup.xlsx", new Blob([XLSX.write(wb, { type: "array", bookType: "xlsx" })])); };
+  const ics = $("#icsBtn"); if (ics) ics.onclick = () => saveFile("Customer-Birthday-Reminders.ics", new Blob([buildICS()], { type: "text/calendar" }));
+}
+function renderSettings() {
+  const st = S.settings; let tl = renderSettings.tl || "en";
+  const el = $("#view-settings");
+  const tk = tl === "zh" ? st.zhScript : tl, tpl = st.templates[tk];
+  el.innerHTML = `
+    <div class="panel"><h3>Messages</h3>
+      <div class="grid2">
+        <label class="field">Default language (when a customer has none)<select id="setLang">${Object.entries(LANGS).map(([k, v]) => `<option value="${k}" ${st.defaultLang === k ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+        <label class="field">Chinese script<select id="setZh"><option value="zh" ${st.zhScript === "zh" ? "selected" : ""}>简体 Simplified</option><option value="zht" ${st.zhScript === "zht" ? "selected" : ""}>繁體 Traditional</option></select></label>
+        <label class="field">Remind me this many days before<input type="number" id="setWin" min="0" max="14" value="${st.windowDays}"></label>
+        <label class="field">Sign as (when account manager is blank)<input type="text" id="setFallback" placeholder="e.g. Daniel Ng" value="${esc(st.fallbackSender)}"></label>
+      </div>
+      <label class="field">Line under the sender's name (optional, e.g. agency name)<input type="text" id="setLine" value="${esc(st.senderLine)}" placeholder="Leave blank to sign with the name only"></label>
+    </div>
+    <div class="panel"><h3>Card style</h3><div class="styles" id="styleGrid">${Object.entries(STYLES).map(([k, v]) => `<button data-style="${k}" aria-pressed="${st.style === k}"><img alt="${v} card" data-thumb="${k}">${v}</button>`).join("")}</div></div>
+    <div class="panel"><h3>Message wording</h3>
+      <div class="seg" role="group" aria-label="Template language">${Object.entries(LANGS).map(([k, v]) => `<button data-tl="${k}" aria-pressed="${tl === k}">${v}</button>`).join("")}</div>
+      <label class="field">Email subject<input type="text" id="tplSubj" value="${esc(tpl.subject)}"></label>
+      <label class="field">Message<textarea id="tplBody">${esc(tpl.body)}</textarea></label>
+      <p class="small muted">Use {name} for the customer's name, {company} for their company and {am} for the account manager's name.</p>
+      <div class="row"><button class="primary" id="tplSave">Save wording</button><button id="tplReset">Reset to original</button></div>
+    </div>
+    <div class="panel"><h3>PDF</h3><div class="row">${Object.entries(LANGS).map(([k, v]) => `<label class="row small" style="gap:6px"><input type="checkbox" data-pl="${k}" ${st.pdfLangs[k] ? "checked" : ""}> ${v}</label>`).join("")}</div></div>
+    <div class="panel"><h3>Your data</h3><p class="small muted">Your customer list is saved only in this browser on this device. It is never uploaded. Clearing your browser data removes it, so keep your Excel file as the master copy.</p>
+      <div class="row"><button id="loadExample">Show example customers</button><button class="danger" id="clearAll">Delete all customer data</button></div></div>`;
+  const set = (k, v) => { st[k] = v; save(); renderAll(); };
+  $("#setLang").onchange = e => set("defaultLang", e.target.value);
+  $("#setZh").onchange = e => set("zhScript", e.target.value);
+  $("#setWin").onchange = e => { const v = Math.max(0, Math.min(14, parseInt(e.target.value, 10) || 3)); set("windowDays", v); };
+  $("#setFallback").onchange = e => set("fallbackSender", clean(e.target.value));
+  $("#setLine").onchange = e => set("senderLine", clean(e.target.value));
+  el.querySelectorAll("[data-style]").forEach(b => b.onclick = () => set("style", b.dataset.style));
+  el.querySelectorAll("[data-tl]").forEach(b => b.onclick = () => { renderSettings.tl = b.dataset.tl; renderSettings(); });
+  el.querySelectorAll("[data-pl]").forEach(b => b.onchange = () => { st.pdfLangs[b.dataset.pl] = b.checked; save(); });
+  $("#tplSave").onclick = () => { st.templates[tk] = { subject: $("#tplSubj").value, body: $("#tplBody").value }; save(); toast("Wording saved"); };
+  $("#tplReset").onclick = async () => { if (await confirmBox("Reset wording?", `The ${LANGS[tl]} subject and message go back to the original text.`, "Reset")) { st.templates[tk] = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES[tk])); save(); renderSettings(); } };
+  $("#loadExample").onclick = async () => { if (!S.isExample && S.customers.length && !(await confirmBox("Show example customers?", `This replaces your ${S.customers.length} customers on this device with made-up examples. Re-import your file afterwards to get them back.`, "Replace with examples", true))) return; S.customers = exampleCustomers(); S.isExample = true; S.skipped = []; save(); renderAll(); show("upcoming"); };
+  $("#clearAll").onclick = async () => { if (await confirmBox("Delete all customer data?", `All ${S.customers.length} customers, sent history and settings are removed from this device. This can't be undone.`, "Delete everything", true)) { S = defaultState(); S.isExample = false; save(); renderAll(); toast("All data deleted"); } };
+  const sampleC = S.customers.find(c => c.dob) || exampleCustomers()[0];
+  el.querySelectorAll("[data-thumb]").forEach(async img => { const cv = await drawCard(sampleC, langOf(sampleC), img.dataset.thumb, 270); img.src = cv.toDataURL("image/jpeg", .8); });
+}
+function renderAll() {
+  $("#exampleBanner").hidden = !S.isExample;
+  renderUpcoming(); renderMonth(); renderCustomers(); renderSettings();
+}
+
+/* ---------- composer ---------- */
+async function openComposer(id, year) {
+  const c = S.customers.find(x => x.id === id); if (!c) return;
+  const dt = year ? occ(c.dob, year) : nextBday(c, today());
+  let lang = langOf(c), style = S.settings.style, cardBlob = null;
+  const sh = openSheet("");
+  const paint = async () => {
+    const m = message(c, lang), sent = isSent(c, dt), days = daysBetween(today(), dt), w = warningsOf(c, duplicateIds());
+    const waText = encodeURIComponent(m.body);
+    sh.innerHTML = `
+      <div class="sheet-head"><div><div class="eyebrow">${fmtDate(dt)} · ${days === 0 ? "Today" : days > 0 ? "in " + days + " day" + (days > 1 ? "s" : "") : Math.abs(days) + " days ago"}${milestone(c, dt) ? " · Turning " + milestone(c, dt) : ""}</div><h2>${esc(c.name)}</h2><p class="small muted">${esc([c.company, "AM: " + sender(c)].filter(Boolean).join(" · "))}</p></div><button class="x" data-close aria-label="Close">×</button></div>
+      ${w.length ? `<div class="banner warn"><span><strong>Check first:</strong> ${esc(w.join("; "))}</span><button data-editc>Edit</button></div>` : ""}
+      <div class="composer">
+        <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+          <img class="cardimg" id="cardPrev" alt="Birthday card for ${esc(displayName(c))}">
+          <div class="seg" role="group" aria-label="Card style">${Object.entries(STYLES).map(([k, v]) => `<button data-cs="${k}" aria-pressed="${style === k}">${v}</button>`).join("")}</div>
+          <div class="row"><button class="grow" id="saveImg">Save card image</button><button class="grow" id="copyImg">Copy image</button></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+          <div class="seg" role="group" aria-label="Message language">${Object.entries(LANGS).map(([k, v]) => `<button data-ml="${k}" aria-pressed="${lang === k}">${v}</button>`).join("")}</div>
+          <label class="field">Message (you can edit before copying)<textarea id="msgBox">${esc(m.body)}</textarea></label>
+          <button class="primary" id="copyMsg">Copy message</button>
+          <div class="contact"><div><div class="eyebrow">WhatsApp</div><code>${esc(fmtPhone(c.phone) || "No phone number")}</code></div>${c.phone ? `<a class="btn" id="waLink" target="_blank" rel="noopener" href="https://wa.me/${c.phone}?text=${waText}">Open chat</a>` : `<button data-editc>Add</button>`}</div>
+          <div class="contact"><div><div class="eyebrow">Email</div><code>${esc(c.email || "No email address")}</code></div>${c.email ? `<button id="copyEmail">Copy address</button>` : `<button data-editc>Add</button>`}</div>
+          ${c.email ? `<div class="contact"><div><div class="eyebrow">Email subject</div><code>${esc(m.subject)}</code></div><button id="copySubj">Copy</button></div>` : ""}
+        </div>
+      </div>
+      <p class="small muted">This app never sends anything by itself. Paste the message and attach the card in WhatsApp or email, then mark it as sent so your team knows.</p>
+      <div class="row">${sent ? `<span class="pill sent">✓ Marked as sent on ${esc(new Date(S.sent[sentKey(c, dt)]).toLocaleDateString())}</span><button id="unsent">Undo</button>` : `<button class="primary grow" id="markSent">Mark as sent</button>`}<button data-close>Close</button></div>`;
+    const img = sh.querySelector("#cardPrev");
+    const cvP = drawCard(c, lang, style).then(cv => { img.src = cv.toDataURL("image/png"); return toBlob(cv); });
+    cvP.then(b => cardBlob = b);
+    sh.querySelectorAll("[data-cs]").forEach(b => b.onclick = () => { style = b.dataset.cs; paint(); });
+    sh.querySelectorAll("[data-ml]").forEach(b => b.onclick = () => { lang = b.dataset.ml; paint(); });
+    sh.querySelector("#copyMsg").onclick = () => copyText(sh.querySelector("#msgBox").value);
+    sh.querySelector("#msgBox").oninput = e => { const a = sh.querySelector("#waLink"); if (a) a.href = `https://wa.me/${c.phone}?text=${encodeURIComponent(e.target.value)}`; };
+    sh.querySelector("#saveImg").onclick = async () => saveFile(`Birthday-${c.name.replace(/[^\w]+/g, "-").replace(/^-|-$/g, "")}.png`, cardBlob || await cvP);
+    sh.querySelector("#copyImg").onclick = async () => { try { await navigator.clipboard.write([new ClipboardItem({ "image/png": cardBlob ? Promise.resolve(cardBlob) : cvP })]); toast("Card copied - paste it into WhatsApp or email"); } catch (e) { toast("Your browser blocked image copy - use Save card image"); } };
+    const ce = sh.querySelector("#copyEmail"); if (ce) ce.onclick = () => copyText(c.email);
+    const cs = sh.querySelector("#copySubj"); if (cs) cs.onclick = () => copyText(m.subject);
+    sh.querySelectorAll("[data-editc]").forEach(b => b.onclick = () => { closeSheet(sh); openEditor(c.id); });
+    const ms = sh.querySelector("#markSent"); if (ms) ms.onclick = () => { S.sent[sentKey(c, dt)] = new Date().toISOString(); save(); renderAll(); paint(); toast("Marked as sent"); };
+    const us = sh.querySelector("#unsent"); if (us) us.onclick = () => { delete S.sent[sentKey(c, dt)]; save(); renderAll(); paint(); };
+  };
+  paint();
+}
+
+/* ---------- editor ---------- */
+function openEditor(id) {
+  const c = S.customers.find(x => x.id === id); if (!c) return;
+  const sh = openSheet(`
+    <div class="sheet-head"><div><div class="eyebrow">Edit customer</div><h2>${esc(c.name)}</h2>${c.row ? `<p class="small muted">From row ${c.row} of your file${c.dobRaw ? ` · birthday in file: “${esc(c.dobRaw)}”` : ""}</p>` : ""}</div><button class="x" data-close aria-label="Close">×</button></div>
+    ${c.problems.concat(c.warnings).length ? `<div class="banner warn"><span>${esc(c.problems.concat(c.warnings).join("; "))}</span></div>` : ""}
+    <div class="grid2">
+      <label class="field">Customer name<input type="text" id="e-name" value="${esc(c.name)}"></label>
+      <label class="field">Preferred name in messages (optional)<input type="text" id="e-pref" value="${esc(c.preferred)}" placeholder="e.g. Mr Tan, Puan Aisyah"></label>
+      <label class="field">Company<input type="text" id="e-company" value="${esc(c.company)}"></label>
+      <label class="field">Account manager<input type="text" id="e-am" value="${esc(c.am)}"></label>
+    </div>
+    <div class="grid2">
+      <label class="field">Birthday - day<select id="e-d"><option value="">-</option>${Array.from({ length: 31 }, (_, i) => `<option ${c.dob && c.dob.d === i + 1 ? "selected" : ""}>${i + 1}</option>`).join("")}</select></label>
+      <label class="field">Birthday - month<select id="e-m"><option value="">-</option>${MONTHS.map((mn, i) => `<option value="${i + 1}" ${c.dob && c.dob.m === i + 1 ? "selected" : ""}>${mn}</option>`).join("")}</select></label>
+      <label class="field">Year of birth (optional)<input type="number" id="e-y" value="${c.dob && c.dob.y ? c.dob.y : ""}" placeholder="e.g. 1980"></label>
+      <label class="field">Message language<select id="e-lang"><option value="">Default (${LANGS[S.settings.defaultLang]})</option>${Object.entries(LANGS).map(([k, v]) => `<option value="${k}" ${c.lang === k ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+      <label class="field">Phone (WhatsApp)<input type="tel" id="e-phone" value="${esc(c.phone ? "+" + c.phone : "")}" placeholder="e.g. 012-345 6789"></label>
+      <label class="field">Email<input type="email" id="e-email" value="${esc(c.email)}"></label>
+    </div>
+    <p class="small muted" id="e-err" role="alert"></p>
+    <div class="row"><button class="primary" id="e-save">Save changes</button><button data-close>Cancel</button><span class="grow"></span><button class="danger" id="e-del">Delete customer</button></div>`);
+  sh.querySelector("#e-save").onclick = async () => {
+    const v = id => sh.querySelector(id).value;
+    const d = +v("#e-d"), m = +v("#e-m"), y = v("#e-y") ? +v("#e-y") : null;
+    const err = sh.querySelector("#e-err");
+    let dob = null;
+    if (d || m) { const p = mk(d, m, y); if (p.error) { err.textContent = "That birthday isn't a real date. Please check the day and month."; return; } dob = { d: p.d, m: p.m, y: p.y }; }
+    const ph = normPhone(v("#e-phone")), em = normEmail(v("#e-email"));
+    if (v("#e-phone") && !ph.phone) { err.textContent = ph.note + ". Use a format like 012-345 6789 or +60 12-345 6789."; return; }
+    if (v("#e-email") && !em.email) { err.textContent = em.note; return; }
+    if (!clean(v("#e-name"))) { err.textContent = "Customer name can't be empty."; return; }
+    const next = { name: clean(v("#e-name")), preferred: clean(v("#e-pref")), company: clean(v("#e-company")), am: clean(v("#e-am")), lang: v("#e-lang"), dob, phone: ph.phone, email: em.email };
+    const labels = { name: "Name", preferred: "Preferred name", company: "Company", am: "Account manager", lang: "Language", dob: "Birthday", phone: "Phone", email: "Email" };
+    const show = (k, val) => k === "dob" ? fmtDob(val) : k === "phone" ? fmtPhone(val) : k === "lang" ? (LANGS[val] || "Default") : (val || "(blank)");
+    const changes = Object.keys(next).filter(k => JSON.stringify(next[k] || null) !== JSON.stringify(c[k] || null)).map(k => `${labels[k]}: ${show(k, c[k])} → ${show(k, next[k])}`);
+    if (!changes.length) { closeSheet(sh); return; }
+    if (!(await confirmBox("Save these changes?", changes.join("\n"), "Save"))) return;
+    Object.assign(c, next, { phoneNote: ph.note && ph.phone ? null : ph.note, emailNote: null, dobError: dob ? null : "Birthday missing" });
+    validate(c); save(); closeSheet(sh); renderAll(); toast("Saved");
+  };
+  sh.querySelector("#e-del").onclick = async () => {
+    if (!(await confirmBox(`Delete ${c.name}?`, "This customer is removed from this device. Your Excel file is not changed.", "Delete", true))) return;
+    S.customers = S.customers.filter(x => x.id !== c.id); save(); closeSheet(sh); renderAll(); toast("Customer deleted");
+  };
+}
+
+/* ---------- wiring ---------- */
+document.querySelector(".tabs").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b) show(b.dataset.view); });
+document.addEventListener("click", e => {
+  const o = e.target.closest("[data-open]"); if (o) { openComposer(o.dataset.open, +o.dataset.y); return; }
+  const ed = e.target.closest("[data-edit]"); if (ed) { openEditor(ed.dataset.edit); return; }
+  const g = e.target.closest("[data-goto]"); if (g) { if (g.dataset.filter) custFilter = g.dataset.filter; renderCustomers(); show(g.dataset.goto); }
+});
+$("#bannerImport").onclick = () => { show("customers"); $("#fileInput").click(); };
+$("#fileInput").onchange = e => { handleFile(e.target.files[0]); e.target.value = ""; };
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+$("#todayLabel").textContent = fmtDate(today());
+if (!load()) { S.customers = exampleCustomers(); S.isExample = true; }
+else if (S.isExample) S.customers = exampleCustomers();
+const hashView = (location.hash || "").slice(1); if (["upcoming", "month", "customers", "settings"].includes(hashView)) current = hashView;
+renderAll(); show(current);
+window.CBR = { importTable: t => importPreview(t), readSpreadsheet, buildFromRows, guessMap, buildMonthPDF, parseDOB, normPhone, state: () => S };
+
+if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
